@@ -55,6 +55,50 @@ latest_frame_lock = threading.Lock()
 latest_frame = None          # raw JPEG bytes of the annotated frame
 frame_queue = queue.Queue(maxsize=2)
 
+# ─── Vehicle tracking (to avoid duplicate detections) ────────────────────────
+tracked_vehicles = {}  # Format: {(cx, cy): {"label": str, "timestamp": float, "bbox": [x1,y1,x2,y2]}}
+tracking_lock = threading.Lock()
+TRACKING_DISTANCE_THRESHOLD = 80  # pixels
+TRACKING_TIMEOUT = 5  # seconds
+
+def get_bbox_center(bbox):
+    """Calculate center point of bounding box."""
+    x1, y1, x2, y2 = bbox
+    return ((x1 + x2) // 2, (y1 + y2) // 2)
+
+def euclidean_distance(p1, p2):
+    """Calculate distance between two points."""
+    return ((p1[0] - p2[0])**2 + (p1[1] - p2[1])**2)**0.5
+
+def is_new_vehicle(bbox, label):
+    """Check if detection is a new vehicle or a repeat of tracked one."""
+    global tracked_vehicles
+    current_time = time.time()
+    center = get_bbox_center(bbox)
+    
+    # Clean up old tracks
+    expired_keys = [k for k, v in tracked_vehicles.items() 
+                    if current_time - v["timestamp"] > TRACKING_TIMEOUT]
+    for k in expired_keys:
+        del tracked_vehicles[k]
+    
+    # Check if close to existing vehicle
+    for tracked_center, tracked_info in tracked_vehicles.items():
+        dist = euclidean_distance(center, tracked_center)
+        if dist < TRACKING_DISTANCE_THRESHOLD and tracked_info["label"] == label:
+            # Update timestamp but don't report as new
+            tracked_info["timestamp"] = current_time
+            tracked_info["bbox"] = bbox
+            return False
+    
+    # New vehicle - track it
+    tracked_vehicles[center] = {
+        "label": label,
+        "timestamp": current_time,
+        "bbox": bbox
+    }
+    return True
+
 # ─── YOLO + SAHI Setup ────────────────────────────────────────────────────────
 MODEL = None
 USE_SAHI = False
@@ -315,11 +359,16 @@ class RTSPReader(threading.Thread):
                 detections = []
                 if frame_idx % DETECTION_INTERVAL == 0:
                     detections = detect(frame)
-                    state["last_detections"] = detections
-                    state["total_detections"] += len(detections)
-                    for d in detections:
-                        lbl = d["label"]
-                        state["detection_count"][lbl] = state["detection_count"].get(lbl, 0) + 1
+                    # Filter: only keep new vehicles
+                    new_detections = []
+                    with tracking_lock:
+                        for d in detections:
+                            if is_new_vehicle(d["bbox"], d["label"]):
+                                new_detections.append(d)
+                                state["total_detections"] += 1
+                                lbl = d["label"]
+                                state["detection_count"][lbl] = state["detection_count"].get(lbl, 0) + 1
+                    state["last_detections"] = new_detections
                 else:
                     detections = state.get("last_detections", [])
 
@@ -390,11 +439,16 @@ class OpenCVReader(threading.Thread):
                 detections = []
                 if frame_idx % DETECTION_INTERVAL == 0:
                     detections = detect(frame)
-                    state["last_detections"] = detections
-                    state["total_detections"] += len(detections)
-                    for d in detections:
-                        lbl = d["label"]
-                        state["detection_count"][lbl] = state["detection_count"].get(lbl, 0) + 1
+                    # Filter: only keep new vehicles
+                    new_detections = []
+                    with tracking_lock:
+                        for d in detections:
+                            if is_new_vehicle(d["bbox"], d["label"]):
+                                new_detections.append(d)
+                                state["total_detections"] += 1
+                                lbl = d["label"]
+                                state["detection_count"][lbl] = state["detection_count"].get(lbl, 0) + 1
+                    state["last_detections"] = new_detections
                 else:
                     detections = state.get("last_detections", [])
 
