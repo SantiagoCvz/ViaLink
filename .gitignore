@@ -1,0 +1,38 @@
+# Python / Compiled files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Virtual Environments
+venv/
+.venv/
+env/
+.env/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# YOLOv8 / Ultralytics specific
+runs/
+*.pt
+*.onnx
+*.engine
+ultralytics/
+
+# Datasets and large media files
+archive/
+*.mp4
+*.avi
+*.mkv
+
+# VS Code / IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS File System
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
