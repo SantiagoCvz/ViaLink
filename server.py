@@ -35,10 +35,8 @@ DETECTION_INTERVAL = 6     # run detection every 6 frames (was 3) for better per
 CONF_THRESHOLD = 0.35
 IOU_THRESHOLD = 0.45
 
-# COCO class IDs we care about (car=2, motorcycle=3, bus=5, truck=7, ambulance not in COCO but we map it)
-VEHICLE_CLASSES = {2: "car", 3: "motorcycle", 5: "bus", 7: "truck"}
-# For ambulance detection we'll also look for class 0 (person) on buses for heuristics
-# and use color-based post-filter for red/white patterns typical of ambulances
+# Custom class IDs from fine-tuned dataset.yaml
+VEHICLE_CLASSES = {0: "ambulance", 1: "bus", 2: "car", 3: "motorcycle", 4: "truck"}
 
 # ─── Global state ─────────────────────────────────────────────────────────────
 state = {
@@ -107,9 +105,15 @@ def load_model():
     global MODEL, USE_SAHI
     try:
         from ultralytics import YOLO
-        logger.info("Loading YOLOv8n model...")
-        MODEL = YOLO("yolov8n.pt")
-        logger.info("YOLOv8n loaded successfully")
+        import os
+        model_path = "runs/ambulance_detection/weights/best.pt"
+        if not os.path.exists(model_path):
+            logger.warning(f"Custom model '{model_path}' not found, falling back to 'yolov8n.pt'. Make sure to run the training script!")
+            model_path = "yolov8n.pt"
+            
+        logger.info(f"Loading YOLO model '{model_path}'...")
+        MODEL = YOLO(model_path)
+        logger.info("YOLO model loaded successfully")
 
         # SAHI disabled by default (too slow for real-time streaming)
         # To enable SAHI: set USE_SAHI = True below
@@ -133,24 +137,6 @@ load_model()
 
 # ─── Detection helpers ────────────────────────────────────────────────────────
 
-def is_ambulance_heuristic(img_crop, label):
-    """
-    Simple color heuristic: if a detected vehicle has high red or white pixel ratio,
-    treat it as a potential ambulance.  Works without a custom-trained ambulance class.
-    """
-    if label not in ("car", "bus", "truck"):
-        return False
-    hsv = cv2.cvtColor(img_crop, cv2.COLOR_BGR2HSV)
-    # Red mask (wraps around in HSV)
-    mask1 = cv2.inRange(hsv, np.array([0, 70, 70]),   np.array([10, 255, 255]))
-    mask2 = cv2.inRange(hsv, np.array([170, 70, 70]), np.array([180, 255, 255]))
-    red_ratio = (cv2.countNonZero(mask1) + cv2.countNonZero(mask2)) / max(img_crop.shape[0] * img_crop.shape[1], 1)
-    # White mask
-    white_mask = cv2.inRange(hsv, np.array([0, 0, 200]), np.array([180, 30, 255]))
-    white_ratio = cv2.countNonZero(white_mask) / max(img_crop.shape[0] * img_crop.shape[1], 1)
-    return red_ratio > 0.15 or white_ratio > 0.55
-
-
 def run_detection_yolo(frame):
     """Standard YOLO inference - optimized for real-time performance."""
     # Use half precision if available for faster inference
@@ -168,9 +154,6 @@ def run_detection_yolo(frame):
         conf = float(box.conf[0])
         x1, y1, x2, y2 = map(int, box.xyxy[0])
         label = VEHICLE_CLASSES[cls]
-        crop = frame[max(0,y1):y2, max(0,x1):x2]
-        if crop.size > 0 and is_ambulance_heuristic(crop, label):
-            label = "ambulance"
         detections.append({"bbox": [x1, y1, x2, y2], "label": label, "conf": conf})
     return detections
 
@@ -205,17 +188,14 @@ def run_detection_sahi(frame):
     detections = []
     for obj in result.object_prediction_list:
         cls_name = obj.category.name.lower()
-        # Map COCO names to our labels
-        label_map = {"car": "car", "truck": "truck", "bus": "bus", "motorcycle": "motorcycle"}
+        # Map class names to our labels
+        label_map = {"ambulance": "ambulance", "car": "car", "truck": "truck", "bus": "bus", "motorcycle": "motorcycle"}
         if cls_name not in label_map:
             continue
         label = label_map[cls_name]
         bbox = obj.bbox
         x1, y1, x2, y2 = int(bbox.minx), int(bbox.miny), int(bbox.maxx), int(bbox.maxy)
         conf = obj.score.value
-        crop = frame[max(0,y1):y2, max(0,x1):x2]
-        if crop.size > 0 and is_ambulance_heuristic(crop, label):
-            label = "ambulance"
         detections.append({"bbox": [x1, y1, x2, y2], "label": label, "conf": conf})
     return detections
 
