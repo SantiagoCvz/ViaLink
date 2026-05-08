@@ -30,8 +30,8 @@ RTSP_TIMEOUT = 10          # seconds before declaring stream dead
 RECONNECT_DELAY = 5        # seconds between reconnect attempts
 FRAME_WIDTH = 1280
 FRAME_HEIGHT = 720
-TARGET_FPS = 15
-DETECTION_INTERVAL = 3     # run detection every N frames (performance)
+TARGET_FPS = 25            # Increased from 15 for smoother video
+DETECTION_INTERVAL = 6     # run detection every 6 frames (was 3) for better performance
 CONF_THRESHOLD = 0.35
 IOU_THRESHOLD = 0.45
 
@@ -111,15 +111,19 @@ def load_model():
         MODEL = YOLO("yolov8n.pt")
         logger.info("YOLOv8n loaded successfully")
 
-        # Try to load SAHI
-        try:
-            from sahi import AutoDetectionModel
-            from sahi.predict import get_sliced_prediction
-            USE_SAHI = True
-            logger.info("SAHI available – sliced inference enabled")
-        except ImportError:
-            USE_SAHI = False
-            logger.warning("SAHI not installed – running standard inference")
+        # SAHI disabled by default (too slow for real-time streaming)
+        # To enable SAHI: set USE_SAHI = True below
+        USE_SAHI = False
+        if USE_SAHI:
+            try:
+                from sahi import AutoDetectionModel
+                from sahi.predict import get_sliced_prediction
+                logger.info("SAHI available – sliced inference enabled")
+            except ImportError:
+                USE_SAHI = False
+                logger.warning("SAHI not installed – running standard inference")
+        else:
+            logger.info("SAHI disabled for better performance (standard YOLOv8 only)")
 
     except ImportError:
         logger.warning("ultralytics not installed – running in DEMO mode (random boxes)")
@@ -148,8 +152,14 @@ def is_ambulance_heuristic(img_crop, label):
 
 
 def run_detection_yolo(frame):
-    """Standard YOLO inference."""
-    results = MODEL(frame, conf=CONF_THRESHOLD, iou=IOU_THRESHOLD, verbose=False)[0]
+    """Standard YOLO inference - optimized for real-time performance."""
+    # Use half precision if available for faster inference
+    try:
+        results = MODEL(frame, conf=CONF_THRESHOLD, iou=IOU_THRESHOLD, verbose=False, half=True)[0]
+    except:
+        # Fallback to full precision if half precision fails
+        results = MODEL(frame, conf=CONF_THRESHOLD, iou=IOU_THRESHOLD, verbose=False)[0]
+    
     detections = []
     for box in results.boxes:
         cls = int(box.cls[0])
@@ -322,6 +332,8 @@ class RTSPReader(threading.Thread):
         cmd = [
             "ffmpeg", "-loglevel", "error",
             "-rtsp_transport", "tcp",
+            "-fflags", "nobuffer",          # Discard old frames if buffer builds up
+            "-flags", "low_delay",          # Low latency mode
             "-i", RTSP_URL,
             "-vf", f"scale={FRAME_WIDTH}:{FRAME_HEIGHT}",
             "-r", str(TARGET_FPS),
@@ -373,7 +385,7 @@ class RTSPReader(threading.Thread):
                     detections = state.get("last_detections", [])
 
                 annotated = draw_detections(frame.copy(), detections)
-                _, jpeg = cv2.imencode(".jpg", annotated, [cv2.IMWRITE_JPEG_QUALITY, 80])
+                _, jpeg = cv2.imencode(".jpg", annotated, [cv2.IMWRITE_JPEG_QUALITY, 65])
                 with latest_frame_lock:
                     latest_frame = jpeg.tobytes()
 
@@ -453,7 +465,7 @@ class OpenCVReader(threading.Thread):
                     detections = state.get("last_detections", [])
 
                 annotated = draw_detections(frame.copy(), detections)
-                _, jpeg = cv2.imencode(".jpg", annotated, [cv2.IMWRITE_JPEG_QUALITY, 80])
+                _, jpeg = cv2.imencode(".jpg", annotated, [cv2.IMWRITE_JPEG_QUALITY, 65])
                 with latest_frame_lock:
                     latest_frame = jpeg.tobytes()
 
@@ -465,16 +477,28 @@ class OpenCVReader(threading.Thread):
 
 def generate_mjpeg():
     BLANK = _make_blank_frame()
+    last_frame = None
+    skip_count = 0
+    
     while True:
         with latest_frame_lock:
             frame = latest_frame
 
         if frame is None:
             frame = BLANK
+        elif frame == last_frame:
+            # Skip duplicate frames to avoid blocking
+            skip_count += 1
+            if skip_count < 2:
+                time.sleep(0.01)
+                continue
+            skip_count = 0
+        else:
+            last_frame = frame
+            skip_count = 0
 
         yield (b"--frame\r\n"
                b"Content-Type: image/jpeg\r\n\r\n" + frame + b"\r\n")
-        time.sleep(1 / TARGET_FPS)
 
 
 def _make_blank_frame():

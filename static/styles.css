@@ -1,57 +1,56 @@
-/* ════════════════════════════════════════════════════════════════════════════ */
-/* CLAURA VISUAL IDENTITY DESIGN SYSTEM                                          */
-/* Vehicle Detection Dashboard - Light Theme with Elegant Typography             */
-/* ════════════════════════════════════════════════════════════════════════════ */
-
 :root {
-  /* Claura Visual Identity - Blue Edition */
-  --bg-primary:    #F4F7FA;
-  --bg-secondary:  #FFFFFF;
-  --surface-tint:  #EBF2F7;
-  --text-primary:  #0F172A;
+  --bg-primary: #f4f7fa;
+  --bg-secondary: #ffffff;
+  --surface-tint: #ebf2f7;
+  --text-primary: #0f172a;
   --text-secondary: #334155;
-  --text-muted:    #64748B;
-  
+  --text-muted: #64748b;
+
   /* Accent Colors */
-  --brand-deep:    #1E293B;
-  --primary-blue:  #3B82F6;
-  --secondary-blue: #60A5FA;
-  --light-blue:    #BFDBFE;
-  --emergency:     #DC2626;
-  --warning:       #F59E0B;
-  
+  --brand-deep: #1e293b;
+  --primary-blue: #3b82f6;
+  --secondary-blue: #60a5fa;
+  --light-blue: #bfdbfe;
+  --emergency: #dc2626;
+  --warning: #f59e0b;
+
   /* Gradients */
-  --mesh-gradient: linear-gradient(135deg, #1D4ED8 0%, #60A5FA 50%, #BFDBFE 100%);
-  --soft-glow:     rgba(59, 130, 246, 0.15);
-  
+  --mesh-gradient: linear-gradient(
+    135deg,
+    #1d4ed8 0%,
+    #60a5fa 50%,
+    #bfdbfe 100%
+  );
+  --soft-glow: rgba(59, 130, 246, 0.15);
+
   /* Vehicle Type Colors - Blue Theme */
-  --car:           #3B82F6;
-  --ambulance:     #DC2626;
-  --truck:         #F59E0B;
-  --bus:           #6366F1;
-  --motorcycle:    #8B5CF6;
-  
+  --car: #3b82f6;
+  --ambulance: #dc2626;
+  --truck: #f59e0b;
+  --bus: #6366f1;
+  --motorcycle: #8b5cf6;
+
   /* Typography */
-  --font-display:  'Cushing', 'Recife', serif;
-  --font-body:     'Inter', 'Founders Grotesk', sans-serif;
-  
+  --font-display: "Cushing", "Recife", serif;
+  --font-body: "Inter", "Founders Grotesk", sans-serif;
+
   /* Spacing */
-  --spacing-xs:    4px;
-  --spacing-sm:    8px;
-  --spacing-md:    12px;
-  --spacing-lg:    16px;
-  --spacing-xl:    20px;
-  --spacing-2xl:   24px;
-  --spacing-3xl:   32px;
-  --spacing-4xl:   40px;
-  --spacing-gap:   120px;
-  
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 12px;
+  --spacing-lg: 16px;
+  --spacing-xl: 20px;
+  --spacing-2xl: 24px;
+  --spacing-3xl: 32px;
+  --spacing-4xl: 40px;
+  --spacing-gap: 120px;
+
   /* Border Radius */
-  --radius-sm:     8px;
-  --radius-md:     12px;
-  --radius-lg:     16px;
-  --radius-xl:     24px;
-  --radius-full:   999px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-full: 999px;
 }
 
 /* ════════════════════════════════════════════════════════════════════════════ */
@@ -83,21 +82,29 @@ body {
 
 /* ── Ambient Background Texture ── */
 body::before {
-  content: '';
+  content: "";
   position: fixed;
   inset: 0;
   pointer-events: none;
   z-index: 0;
   background-image:
-    radial-gradient(circle at 20% 50%, rgba(59, 130, 246, 0.08) 0%, transparent 50%),
-    radial-gradient(circle at 80% 80%, rgba(59, 130, 246, 0.05) 0%, transparent 50%);
+    radial-gradient(
+      circle at 20% 50%,
+      rgba(59, 130, 246, 0.08) 0%,
+      transparent 50%
+    ),
+    radial-gradient(
+      circle at 80% 80%,
+      rgba(59, 130, 246, 0.05) 0%,
+      transparent 50%
+    );
   background-size: 100% 100%;
   background-attachment: fixed;
 }
 
 /* ── Subtle Grid Overlay ── */
 body::after {
-  content: '';
+  content: "";
   position: fixed;
   inset: 0;
   pointer-events: none;
@@ -150,8 +157,13 @@ header {
 }
 
 @keyframes pulse-hex {
-  0%, 100% { box-shadow: 0 8px 20px rgba(59, 130, 246, 0.3); }
-  50%      { box-shadow: 0 12px 30px rgba(59, 130, 246, 0.5); }
+  0%,
+  100% {
+    box-shadow: 0 8px 20px rgba(59, 130, 246, 0.3);
+  }
+  50% {
+    box-shadow: 0 12px 30px rgba(59, 130, 246, 0.5);
+  }
 }
 
 .logo-text h1 {
@@ -210,7 +222,7 @@ header {
 }
 
 .status-dot.error {
-  background: #DC2626;
+  background: #dc2626;
   box-shadow: 0 0 8px rgba(220, 38, 38, 0.6);
 }
 
@@ -221,8 +233,13 @@ header {
 }
 
 @keyframes blink {
-  0%, 100% { opacity: 1; }
-  50%      { opacity: 0.3; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
 }
 
 .time-display {
@@ -301,7 +318,7 @@ main {
   gap: var(--spacing-sm);
   font-family: var(--font-body);
   font-size: 11px;
-  color: #DC2626;
+  color: #dc2626;
   letter-spacing: 1px;
   text-transform: uppercase;
   font-weight: 600;
@@ -311,7 +328,7 @@ main {
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: #DC2626;
+  background: #dc2626;
   animation: blink 1s infinite;
 }
 
@@ -319,7 +336,7 @@ main {
   position: relative;
   width: 100%;
   aspect-ratio: 16/9;
-  background: linear-gradient(135deg, #F0F4F8 0%, #F8FAFC 100%);
+  background: linear-gradient(135deg, #f0f4f8 0%, #f8fafc 100%);
   overflow: hidden;
   display: flex;
   align-items: center;
@@ -342,10 +359,34 @@ main {
   border: 2px solid var(--primary-blue);
 }
 
-.corner.tl { top: 0; left: 0; border-right: none; border-bottom: none; border-radius: 2px 0 0 0; }
-.corner.tr { top: 0; right: 0; border-left: none; border-bottom: none; border-radius: 0 2px 0 0; }
-.corner.bl { bottom: 0; left: 0; border-right: none; border-top: none; border-radius: 0 0 0 2px; }
-.corner.br { bottom: 0; right: 0; border-left: none; border-top: none; border-radius: 0 0 2px 0; }
+.corner.tl {
+  top: 0;
+  left: 0;
+  border-right: none;
+  border-bottom: none;
+  border-radius: 2px 0 0 0;
+}
+.corner.tr {
+  top: 0;
+  right: 0;
+  border-left: none;
+  border-bottom: none;
+  border-radius: 0 2px 0 0;
+}
+.corner.bl {
+  bottom: 0;
+  left: 0;
+  border-right: none;
+  border-top: none;
+  border-radius: 0 0 0 2px;
+}
+.corner.br {
+  bottom: 0;
+  right: 0;
+  border-left: none;
+  border-top: none;
+  border-radius: 0 0 2px 0;
+}
 
 .video-overlay-info {
   position: absolute;
@@ -386,7 +427,9 @@ main {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .connecting-overlay p {
@@ -438,13 +481,18 @@ main {
 }
 
 .stat-card::before {
-  content: '';
+  content: "";
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
   height: 3px;
-  background: linear-gradient(90deg, transparent, var(--c, var(--primary-blue)), transparent);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--c, var(--primary-blue)),
+    transparent
+  );
   opacity: 0;
   transition: opacity 0.3s ease;
 }
@@ -545,21 +593,27 @@ main {
 }
 
 .light.red {
-  background: #DC2626;
-  border-color: #DC2626;
-  box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.1), 0 0 24px rgba(220, 38, 38, 0.6);
+  background: #dc2626;
+  border-color: #dc2626;
+  box-shadow:
+    inset 0 0 8px rgba(0, 0, 0, 0.1),
+    0 0 24px rgba(220, 38, 38, 0.6);
 }
 
 .light.yellow {
   background: var(--warning);
   border-color: var(--warning);
-  box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.1), 0 0 24px rgba(245, 158, 11, 0.6);
+  box-shadow:
+    inset 0 0 8px rgba(0, 0, 0, 0.1),
+    0 0 24px rgba(245, 158, 11, 0.6);
 }
 
 .light.green {
-  background: #10B981;
-  border-color: #10B981;
-  box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.1), 0 0 24px rgba(16, 185, 129, 0.6);
+  background: #10b981;
+  border-color: #10b981;
+  box-shadow:
+    inset 0 0 8px rgba(0, 0, 0, 0.1),
+    0 0 24px rgba(16, 185, 129, 0.6);
 }
 
 .light.off {
@@ -675,8 +729,14 @@ main {
 }
 
 @keyframes slideIn {
-  from { opacity: 0; transform: translateX(10px); }
-  to   { opacity: 1; transform: translateX(0); }
+  from {
+    opacity: 0;
+    transform: translateX(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
 .event-icon {
@@ -692,11 +752,21 @@ main {
   font-weight: 700;
 }
 
-.event-icon.car        { background: var(--car); }
-.event-icon.ambulance  { background: var(--ambulance); }
-.event-icon.truck      { background: var(--truck); }
-.event-icon.bus        { background: var(--bus); }
-.event-icon.motorcycle { background: var(--motorcycle); }
+.event-icon.car {
+  background: var(--car);
+}
+.event-icon.ambulance {
+  background: var(--ambulance);
+}
+.event-icon.truck {
+  background: var(--truck);
+}
+.event-icon.bus {
+  background: var(--bus);
+}
+.event-icon.motorcycle {
+  background: var(--motorcycle);
+}
 
 .event-text {
   flex: 1;
@@ -755,8 +825,13 @@ main {
 
 /* Ambulance alert pulse */
 @keyframes amb-alert {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); }
-  50%      { box-shadow: 0 0 0 12px rgba(220, 38, 38, 0.2); }
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(220, 38, 38, 0);
+  }
+  50% {
+    box-shadow: 0 0 0 12px rgba(220, 38, 38, 0.2);
+  }
 }
 
 .alert-ambulance {
