@@ -192,8 +192,30 @@ function initializeApp() {
   const feed = document.getElementById('eventFeed');
   feed.innerHTML = '<div style="text-align:center; color:var(--text-dim); font-size:11px; padding:20px; font-family:\'Share Tech Mono\',monospace; letter-spacing:2px;">ESPERANDO DETECCIONES...</div>';
   
+  // Reset vehicle counters to 0
+  document.getElementById('cntCar').textContent = '0';
+  document.getElementById('cntAmb').textContent = '0';
+  document.getElementById('cntBus').textContent = '0';
+  document.getElementById('cntTruck').textContent = '0';
+  document.getElementById('cntMoto').textContent = '0';
+  
+  // Reset vehicle bars
+  document.getElementById('barCar').style.width = '0%';
+  document.getElementById('barAmb').style.width = '0%';
+  document.getElementById('barBus').style.width = '0%';
+  document.getElementById('barTruck').style.width = '0%';
+  document.getElementById('barMoto').style.width = '0%';
+  
+  // Reset stats
+  document.getElementById('statTotal').textContent = '0';
+  document.getElementById('statAmb').textContent = '0';
+  
   // Reset processed events tracking
   processedEventIds.clear();
+  
+  // Reset server counters
+  fetch('/reset', { method: 'POST' })
+    .catch(e => console.log('Reset endpoint called'));
 }
 
 // Initialize on load
@@ -205,4 +227,3 @@ if (document.readyState === 'loading') {
 
 // Poll every 1s
 setInterval(pollStatus, 1000);
-pollStatus();

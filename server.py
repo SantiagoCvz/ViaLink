@@ -502,6 +502,18 @@ def status():
     })
 
 
+@app.route("/reset", methods=["POST"])
+def reset():
+    """Reset all detection counters to start fresh."""
+    global state
+    state["detection_count"] = {"car": 0, "ambulance": 0, "bus": 0, "truck": 0, "motorcycle": 0}
+    state["total_detections"] = 0
+    state["last_detections"] = []
+    state["start_time"] = time.time()
+    tracked_vehicles.clear()
+    return jsonify({"status": "reset", "message": "Counters reset successfully"})
+
+
 @app.route("/")
 def index():
     return send_from_directory("static", "index.html")
