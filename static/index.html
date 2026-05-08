@@ -290,6 +290,60 @@
     font-family: 'Share Tech Mono', monospace;
   }
 
+  /* ── Traffic light (Semáforo) ── */
+  .traffic-light {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 16px;
+    padding: 14px;
+    background: rgba(0,0,0,0.4);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .traffic-light-label {
+    font-size: 11px;
+    letter-spacing: 2px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    font-family: 'Share Tech Mono', monospace;
+    margin-right: 10px;
+  }
+
+  .light {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.05);
+    border: 2px solid rgba(255,255,255,0.15);
+    transition: all 0.4s ease;
+    box-shadow: inset 0 0 10px rgba(0,0,0,0.8);
+  }
+
+  .light.red {
+    background: #ff3b5c;
+    border-color: #ff3b5c;
+    box-shadow: inset 0 0 10px rgba(0,0,0,0.8), 0 0 20px rgba(255,59,92,0.8);
+  }
+
+  .light.yellow {
+    background: #ffa820;
+    border-color: #ffa820;
+    box-shadow: inset 0 0 10px rgba(0,0,0,0.8), 0 0 20px rgba(255,168,32,0.8);
+  }
+
+  .light.green {
+    background: #00c850;
+    border-color: #00c850;
+    box-shadow: inset 0 0 10px rgba(0,0,0,0.8), 0 0 20px rgba(0,200,80,0.8);
+  }
+
+  .light.off {
+    background: rgba(255,255,255,0.05);
+    border-color: rgba(255,255,255,0.15);
+    box-shadow: inset 0 0 10px rgba(0,0,0,0.8);
+  }
+
   /* ── Detection log ── */
   .detection-log {
     grid-column: 2; grid-row: 1 / 4;
@@ -527,6 +581,14 @@
   <div class="detection-log">
     <div class="panel-title">Registro de Detecciones</div>
 
+    <!-- ── Traffic Light ── -->
+    <div class="traffic-light">
+      <span class="traffic-light-label">Semáforo</span>
+      <div class="light red" id="lightRed"></div>
+      <div class="light off" id="lightYellow"></div>
+      <div class="light off" id="lightGreen"></div>
+    </div>
+
     <div class="vehicle-counters">
       <div class="vehicle-bar-row">
         <span class="vehicle-icon">🚗</span>
@@ -592,6 +654,50 @@ let totalEvents = 0;
 let maxCount = 1;
 let prevAmb = 0;
 let processedEventIds = new Set();  // Track which events we've already processed
+
+// ── Traffic Light State ────────────────────────────────────────────────────
+let trafficLightState = 'red';  // 'red', 'green', 'yellow'
+let greenTimeout = null;
+let yellowTimeout = null;
+let lastAmbulanceTime = null;
+
+function setTrafficLight(state) {
+  // Remove all active states
+  document.getElementById('lightRed').className = 'light off';
+  document.getElementById('lightYellow').className = 'light off';
+  document.getElementById('lightGreen').className = 'light off';
+
+  // Set the new state
+  if (state === 'red') {
+    document.getElementById('lightRed').className = 'light red';
+  } else if (state === 'yellow') {
+    document.getElementById('lightYellow').className = 'light yellow';
+  } else if (state === 'green') {
+    document.getElementById('lightGreen').className = 'light green';
+  }
+  
+  trafficLightState = state;
+}
+
+function handleAmbulanceDetection() {
+  // Cancel any pending timeouts
+  if (greenTimeout) clearTimeout(greenTimeout);
+  if (yellowTimeout) clearTimeout(yellowTimeout);
+
+  // Set to green immediately
+  setTrafficLight('green');
+  lastAmbulanceTime = Date.now();
+
+  // Schedule transition to yellow after 5 seconds
+  greenTimeout = setTimeout(() => {
+    setTrafficLight('yellow');
+
+    // Schedule transition to red after 2 seconds
+    yellowTimeout = setTimeout(() => {
+      setTrafficLight('red');
+    }, 2000);
+  }, 5000);
+}
 
 // ── Clock ──────────────────────────────────────────────────────────────────
 function tick() {
@@ -667,6 +773,8 @@ async function pollStatus() {
       document.getElementById('videoPanel').classList.remove('alert-ambulance');
       void document.getElementById('videoPanel').offsetWidth;
       document.getElementById('videoPanel').classList.add('alert-ambulance');
+      // Trigger ambulance detection for traffic light
+      handleAmbulanceDetection();
     }
     prevAmb = newAmb;
 
