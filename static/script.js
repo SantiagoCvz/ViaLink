@@ -13,6 +13,7 @@ let totalEvents = 0;
 let maxCount = 1;
 let prevAmb = 0;
 let processedEventIds = new Set();  // Track which events we've already processed
+let isFirstPoll = true;  // Track if this is the first status poll
 
 // ── Traffic Light State ────────────────────────────────────────────────────
 let trafficLightState = 'red';  // 'red', 'green', 'yellow'
@@ -128,7 +129,7 @@ async function pollStatus() {
 
     // Ambulance alert flash
     const newAmb = cnts.ambulance || 0;
-    if (newAmb > prevAmb) {
+    if (newAmb > prevAmb && !isFirstPoll) {
       document.getElementById('videoPanel').classList.remove('alert-ambulance');
       void document.getElementById('videoPanel').offsetWidth;
       document.getElementById('videoPanel').classList.add('alert-ambulance');
@@ -136,6 +137,7 @@ async function pollStatus() {
       handleAmbulanceDetection();
     }
     prevAmb = newAmb;
+    isFirstPoll = false;
 
     // Event feed — add new detections
     const dets = d.last_detections || [];
@@ -179,6 +181,26 @@ function addEvents(dets) {
     // Keep max 60 events
     while (feed.children.length > 60) feed.removeChild(feed.lastChild);
   });
+}
+
+// ── Initialization ────────────────────────────────────────────────────────
+function initializeApp() {
+  // Set traffic light to red on startup
+  setTrafficLight('red');
+  
+  // Clear event feed on startup
+  const feed = document.getElementById('eventFeed');
+  feed.innerHTML = '<div style="text-align:center; color:var(--text-dim); font-size:11px; padding:20px; font-family:\'Share Tech Mono\',monospace; letter-spacing:2px;">ESPERANDO DETECCIONES...</div>';
+  
+  // Reset processed events tracking
+  processedEventIds.clear();
+}
+
+// Initialize on load
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initializeApp);
+} else {
+  initializeApp();
 }
 
 // Poll every 1s
