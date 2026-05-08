@@ -144,7 +144,7 @@
     position: relative; z-index: 5;
     display: grid;
     grid-template-columns: 1fr 320px;
-    grid-template-rows: auto 1fr;
+    grid-template-rows: auto auto 1fr;
     gap: 16px;
     padding: 16px 24px 24px;
     min-height: calc(100vh - 68px);
@@ -152,7 +152,7 @@
 
   /* ── Video Panel ── */
   .video-panel {
-    grid-column: 1; grid-row: 1 / 3;
+    grid-column: 1; grid-row: 1;
     position: relative;
     background: var(--bg2);
     border: 1px solid var(--border);
@@ -246,6 +246,14 @@
     gap: 10px;
   }
 
+  /* ── Stats grid (below video) ── */
+  .stats-grid {
+    grid-column: 1; grid-row: 2;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
   .stat-card {
     background: var(--bg2);
     border: 1px solid var(--border);
@@ -284,7 +292,7 @@
 
   /* ── Detection log ── */
   .detection-log {
-    grid-column: 2; grid-row: 2;
+    grid-column: 2; grid-row: 1 / 4;
     background: var(--bg2);
     border: 1px solid var(--border);
     border-radius: 4px;
