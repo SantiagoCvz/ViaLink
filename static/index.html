@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SYSCOM — Sistema de Detección Vehicular</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@300;400;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:           #080c12;
+    --bg2:          #0d1320;
+    --bg3:          #121a28;
+    --border:       rgba(0,180,255,0.18);
+    --border-glow:  rgba(0,180,255,0.45);
+    --accent:       #00b4ff;
+    --accent2:      #00ffa3;
+    --danger:       #ff3b5c;
+    --warn:         #ffa820;
+    --text:         #c8d8f0;
+    --text-dim:     #4a6080;
+    --car:          #00c850;
+    --ambulance:    #ff3b5c;
+    --truck:        #ff8200;
+    --bus:          #00b4ff;
+    --motorcycle:   #cc44ff;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Rajdhani', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── Grid noise texture ── */
+  body::before {
+    content: '';
+    position: fixed; inset: 0; pointer-events: none; z-index: 0;
+    background-image:
+      linear-gradient(rgba(0,180,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,180,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+
+  /* ── Scanline ── */
+  body::after {
+    content: '';
+    position: fixed; inset: 0; pointer-events: none; z-index: 0;
+    background: repeating-linear-gradient(
+      to bottom,
+      transparent 0px,
+      transparent 3px,
+      rgba(0,0,0,0.12) 3px,
+      rgba(0,0,0,0.12) 4px
+    );
+    animation: scan 8s linear infinite;
+  }
+
+  @keyframes scan {
+    from { background-position: 0 0; }
+    to   { background-position: 0 100vh; }
+  }
+
+  /* ── Header ── */
+  header {
+    position: relative; z-index: 10;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 32px;
+    background: linear-gradient(90deg, rgba(0,180,255,0.06), transparent);
+    border-bottom: 1px solid var(--border);
+    backdrop-filter: blur(6px);
+  }
+
+  .logo {
+    display: flex; align-items: center; gap: 14px;
+  }
+
+  .logo-icon {
+    width: 40px; height: 40px;
+    background: linear-gradient(135deg, var(--accent), #0060a0);
+    clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; font-weight: 700; color: #fff;
+    box-shadow: 0 0 20px rgba(0,180,255,0.5);
+    animation: pulse-hex 3s ease-in-out infinite;
+  }
+
+  @keyframes pulse-hex {
+    0%,100% { box-shadow: 0 0 15px rgba(0,180,255,0.4); }
+    50%      { box-shadow: 0 0 35px rgba(0,180,255,0.8); }
+  }
+
+  .logo-text h1 {
+    font-size: 22px; font-weight: 700; letter-spacing: 4px;
+    color: var(--accent);
+    text-shadow: 0 0 20px rgba(0,180,255,0.6);
+  }
+
+  .logo-text p {
+    font-size: 11px; letter-spacing: 3px; color: var(--text-dim);
+    font-family: 'Share Tech Mono', monospace;
+  }
+
+  .header-right {
+    display: flex; align-items: center; gap: 28px;
+  }
+
+  .status-pill {
+    display: flex; align-items: center; gap: 8px;
+    padding: 6px 16px;
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 12px; letter-spacing: 1px;
+    background: rgba(0,180,255,0.04);
+  }
+
+  .status-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--text-dim);
+    transition: background 0.4s;
+  }
+  .status-dot.live   { background: var(--accent2); box-shadow: 0 0 8px var(--accent2); animation: blink 1s ease-in-out infinite; }
+  .status-dot.error  { background: var(--danger); }
+  .status-dot.connecting { background: var(--warn); animation: blink 0.6s ease-in-out infinite; }
+
+  @keyframes blink {
+    0%,100% { opacity: 1; } 50% { opacity: 0.3; }
+  }
+
+  .time-display {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 20px; color: var(--accent);
+    letter-spacing: 2px;
+    text-shadow: 0 0 12px rgba(0,180,255,0.5);
+  }
+
+  /* ── Main layout ── */
+  main {
+    position: relative; z-index: 5;
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    grid-template-rows: auto 1fr;
+    gap: 16px;
+    padding: 16px 24px 24px;
+    min-height: calc(100vh - 68px);
+  }
+
+  /* ── Video Panel ── */
+  .video-panel {
+    grid-column: 1; grid-row: 1 / 3;
+    position: relative;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+    box-shadow: 0 0 40px rgba(0,180,255,0.08), inset 0 0 40px rgba(0,0,0,0.5);
+  }
+
+  .video-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 16px;
+    background: rgba(0,0,0,0.5);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .video-header .cam-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px; letter-spacing: 3px; color: var(--text-dim);
+  }
+
+  .video-header .cam-id {
+    font-size: 13px; font-weight: 600; color: var(--accent);
+    letter-spacing: 2px;
+  }
+
+  .rec-badge {
+    display: flex; align-items: center; gap: 6px;
+    font-family: 'Share Tech Mono', monospace; font-size: 11px;
+    color: var(--danger);
+    letter-spacing: 2px;
+  }
+
+  .rec-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--danger); animation: blink 1s infinite; }
+
+  .video-wrapper {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16/9;
+    background: #000;
+    overflow: hidden;
+  }
+
+  .video-wrapper img {
+    width: 100%; height: 100%; object-fit: contain;
+    display: block;
+  }
+
+  /* Corner decorations */
+  .corner { position: absolute; width: 20px; height: 20px; z-index: 20; }
+  .corner.tl { top: 0; left: 0; border-top: 2px solid var(--accent); border-left: 2px solid var(--accent); }
+  .corner.tr { top: 0; right: 0; border-top: 2px solid var(--accent); border-right: 2px solid var(--accent); }
+  .corner.bl { bottom: 0; left: 0; border-bottom: 2px solid var(--accent); border-left: 2px solid var(--accent); }
+  .corner.br { bottom: 0; right: 0; border-bottom: 2px solid var(--accent); border-right: 2px solid var(--accent); }
+
+  .video-overlay-info {
+    position: absolute; bottom: 0; left: 0; right: 0; z-index: 15;
+    padding: 8px 14px;
+    background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
+    display: flex; justify-content: space-between; align-items: flex-end;
+    font-family: 'Share Tech Mono', monospace; font-size: 11px; color: rgba(200,220,255,0.7);
+  }
+
+  .connecting-overlay {
+    position: absolute; inset: 0; z-index: 30;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    background: rgba(8,12,18,0.9);
+    gap: 16px;
+  }
+
+  .spinner {
+    width: 60px; height: 60px;
+    border: 3px solid rgba(0,180,255,0.1);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .connecting-overlay p {
+    font-family: 'Share Tech Mono', monospace; font-size: 13px;
+    color: var(--text-dim); letter-spacing: 3px;
+    animation: blink 1.5s ease-in-out infinite;
+  }
+
+  /* ── Side panels ── */
+  .stats-grid {
+    grid-column: 2; grid-row: 1;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .stat-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 14px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.3s;
+  }
+
+  .stat-card::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: linear-gradient(90deg, transparent, var(--c, var(--accent)), transparent);
+  }
+
+  .stat-card:hover { border-color: var(--border-glow); }
+
+  .stat-label {
+    font-size: 10px; letter-spacing: 2px; color: var(--text-dim);
+    text-transform: uppercase; margin-bottom: 6px;
+    font-family: 'Share Tech Mono', monospace;
+  }
+
+  .stat-value {
+    font-size: 32px; font-weight: 700; line-height: 1;
+    color: var(--c, var(--accent));
+    text-shadow: 0 0 15px var(--c, var(--accent));
+    transition: all 0.3s;
+  }
+
+  .stat-sub {
+    font-size: 10px; color: var(--text-dim); margin-top: 4px;
+    font-family: 'Share Tech Mono', monospace;
+  }
+
+  /* ── Detection log ── */
+  .detection-log {
+    grid-column: 2; grid-row: 2;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    display: flex; flex-direction: column;
+    overflow: hidden;
+  }
+
+  .panel-title {
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    font-size: 11px; letter-spacing: 3px; color: var(--text-dim);
+    text-transform: uppercase;
+    font-family: 'Share Tech Mono', monospace;
+    display: flex; align-items: center; gap: 8px;
+    background: rgba(0,0,0,0.3);
+  }
+
+  .panel-title::before {
+    content: '';
+    width: 6px; height: 6px; background: var(--accent);
+    box-shadow: 0 0 8px var(--accent);
+    clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+  }
+
+  /* ── Vehicle counters ── */
+  .vehicle-counters {
+    padding: 12px 16px;
+    display: flex; flex-direction: column; gap: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .vehicle-bar-row {
+    display: flex; align-items: center; gap: 10px;
+  }
+
+  .vehicle-icon { font-size: 16px; width: 22px; text-align: center; }
+
+  .vehicle-bar-label {
+    font-size: 12px; font-weight: 600; letter-spacing: 1px;
+    text-transform: uppercase; width: 90px; flex-shrink: 0;
+    color: var(--clr, var(--text));
+  }
+
+  .bar-track {
+    flex: 1; height: 6px; background: rgba(255,255,255,0.05);
+    border-radius: 3px; overflow: hidden;
+  }
+
+  .bar-fill {
+    height: 100%; width: 0%; border-radius: 3px;
+    background: var(--clr, var(--accent));
+    box-shadow: 0 0 6px var(--clr, var(--accent));
+    transition: width 0.5s ease;
+  }
+
+  .vehicle-count {
+    font-family: 'Share Tech Mono', monospace; font-size: 13px;
+    color: var(--clr, var(--accent)); min-width: 28px; text-align: right;
+  }
+
+  /* ── Event feed ── */
+  .event-feed {
+    flex: 1; overflow-y: auto;
+    padding: 8px;
+    display: flex; flex-direction: column; gap: 4px;
+  }
+
+  .event-feed::-webkit-scrollbar { width: 4px; }
+  .event-feed::-webkit-scrollbar-track { background: transparent; }
+  .event-feed::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .event-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 7px 10px;
+    background: rgba(0,0,0,0.25);
+    border-left: 2px solid var(--clr, var(--accent));
+    border-radius: 0 3px 3px 0;
+    animation: slideIn 0.3s ease;
+    transition: background 0.2s;
+  }
+
+  .event-item:hover { background: rgba(0,180,255,0.05); }
+
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateX(10px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+
+  .event-time {
+    font-family: 'Share Tech Mono', monospace; font-size: 10px;
+    color: var(--text-dim); white-space: nowrap;
+  }
+
+  .event-label {
+    font-size: 12px; font-weight: 600; letter-spacing: 1px;
+    color: var(--clr, var(--text)); text-transform: uppercase;
+    flex: 1;
+  }
+
+  .event-conf {
+    font-family: 'Share Tech Mono', monospace; font-size: 10px;
+    color: var(--text-dim);
+  }
+
+  /* ── FPS bar ── */
+  .fps-bar {
+    padding: 10px 16px;
+    border-top: 1px solid var(--border);
+    display: flex; align-items: center; gap: 12px;
+    font-family: 'Share Tech Mono', monospace; font-size: 11px;
+    color: var(--text-dim);
+  }
+
+  .fps-val { color: var(--accent2); font-size: 14px; }
+
+  /* ── Model badge ── */
+  .model-badge {
+    position: absolute; top: 10px; right: 10px; z-index: 25;
+    padding: 4px 10px;
+    background: rgba(0,0,0,0.7);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    font-family: 'Share Tech Mono', monospace; font-size: 10px;
+    color: var(--accent2);
+    letter-spacing: 2px;
+  }
+
+  /* ── Ambient glow behind video ── */
+  .video-panel::before {
+    content: '';
+    position: absolute; inset: -2px;
+    background: transparent;
+    border-radius: 4px;
+    box-shadow: 0 0 60px rgba(0,180,255,0.06);
+    pointer-events: none;
+  }
+
+  /* Ambulance flash alert */
+  @keyframes amb-alert {
+    0%,100% { box-shadow: 0 0 0 0 rgba(255,59,92,0); }
+    50%      { box-shadow: 0 0 0 8px rgba(255,59,92,0.3); }
+  }
+
+  .alert-ambulance { animation: amb-alert 0.6s ease-in-out 4; }
+
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">S</div>
+    <div class="logo-text">
+      <h1>SYSCOM</h1>
+      <p>SISTEMA DE DETECCIÓN VEHICULAR · AI POWERED</p>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="status-pill">
+      <div class="status-dot connecting" id="statusDot"></div>
+      <span id="statusText">CONECTANDO</span>
+    </div>
+    <div class="time-display" id="clock">--:--:--</div>
+  </div>
+</header>
+
+<main>
+
+  <!-- ── Video Panel ── -->
+  <div class="video-panel" id="videoPanel">
+    <div class="video-header">
+      <div>
+        <div class="cam-label">CÁMARA PRINCIPAL</div>
+        <div class="cam-id">CAM-01 · 169.254.18.91</div>
+      </div>
+      <div class="rec-badge"><div class="rec-dot"></div>REC</div>
+    </div>
+
+    <div class="video-wrapper" id="videoWrapper">
+      <div class="corner tl"></div>
+      <div class="corner tr"></div>
+      <div class="corner bl"></div>
+      <div class="corner br"></div>
+
+      <!-- MJPEG stream from Flask /stream -->
+      <img id="streamImg" src="/stream" alt="Video stream"
+           onerror="handleStreamError()" onload="handleStreamLoad()">
+
+      <div class="model-badge" id="modelBadge">YOLO·SAHI</div>
+
+      <div class="connecting-overlay" id="connectOverlay">
+        <div class="spinner"></div>
+        <p>CONECTANDO AL STREAM</p>
+      </div>
+
+      <div class="video-overlay-info">
+        <span id="frameInfo">FRAME --</span>
+        <span id="resInfo">1280×720</span>
+        <span id="tsInfo">--:--:--</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Stats grid ── -->
+  <div class="stats-grid">
+    <div class="stat-card" style="--c: var(--accent2)">
+      <div class="stat-label">Detecciones</div>
+      <div class="stat-value" id="statTotal">0</div>
+      <div class="stat-sub">TOTAL EVENTOS</div>
+    </div>
+    <div class="stat-card" style="--c: var(--accent)">
+      <div class="stat-label">FPS</div>
+      <div class="stat-value" id="statFps">0</div>
+      <div class="stat-sub">FRAMES/SEG</div>
+    </div>
+    <div class="stat-card" style="--c: var(--ambulance)">
+      <div class="stat-label">Ambulancias</div>
+      <div class="stat-value" id="statAmb">0</div>
+      <div class="stat-sub">DETECTADAS</div>
+    </div>
+    <div class="stat-card" style="--c: var(--warn)">
+      <div class="stat-label">Uptime</div>
+      <div class="stat-value" id="statUp">0</div>
+      <div class="stat-sub">SEGUNDOS</div>
+    </div>
+  </div>
+
+  <!-- ── Detection log ── -->
+  <div class="detection-log">
+    <div class="panel-title">Registro de Detecciones</div>
+
+    <div class="vehicle-counters">
+      <div class="vehicle-bar-row">
+        <span class="vehicle-icon">🚗</span>
+        <span class="vehicle-bar-label" style="--clr:var(--car)">Autos</span>
+        <div class="bar-track"><div class="bar-fill" id="barCar" style="--clr:var(--car)"></div></div>
+        <span class="vehicle-count" id="cntCar" style="--clr:var(--car)">0</span>
+      </div>
+      <div class="vehicle-bar-row">
+        <span class="vehicle-icon">🚑</span>
+        <span class="vehicle-bar-label" style="--clr:var(--ambulance)">Ambulancias</span>
+        <div class="bar-track"><div class="bar-fill" id="barAmb" style="--clr:var(--ambulance)"></div></div>
+        <span class="vehicle-count" id="cntAmb" style="--clr:var(--ambulance)">0</span>
+      </div>
+      <div class="vehicle-bar-row">
+        <span class="vehicle-icon">🚌</span>
+        <span class="vehicle-bar-label" style="--clr:var(--bus)">Autobuses</span>
+        <div class="bar-track"><div class="bar-fill" id="barBus" style="--clr:var(--bus)"></div></div>
+        <span class="vehicle-count" id="cntBus" style="--clr:var(--bus)">0</span>
+      </div>
+      <div class="vehicle-bar-row">
+        <span class="vehicle-icon">🚛</span>
+        <span class="vehicle-bar-label" style="--clr:var(--truck)">Camiones</span>
+        <div class="bar-track"><div class="bar-fill" id="barTruck" style="--clr:var(--truck)"></div></div>
+        <span class="vehicle-count" id="cntTruck" style="--clr:var(--truck)">0</span>
+      </div>
+      <div class="vehicle-bar-row">
+        <span class="vehicle-icon">🏍️</span>
+        <span class="vehicle-bar-label" style="--clr:var(--motorcycle)">Motos</span>
+        <div class="bar-track"><div class="bar-fill" id="barMoto" style="--clr:var(--motorcycle)"></div></div>
+        <span class="vehicle-count" id="cntMoto" style="--clr:var(--motorcycle)">0</span>
+      </div>
+    </div>
+
+    <div class="event-feed" id="eventFeed">
+      <div style="text-align:center; color:var(--text-dim); font-size:11px; padding:20px; font-family:'Share Tech Mono',monospace; letter-spacing:2px;">
+        ESPERANDO DETECCIONES...
+      </div>
+    </div>
+
+    <div class="fps-bar">
+      <span>MODELO:</span>
+      <span class="fps-val" id="modelLabel">—</span>
+      <span style="margin-left:auto">FRAMES:</span>
+      <span class="fps-val" id="fpsFrames">0</span>
+    </div>
+  </div>
+
+</main>
+
+<script>
+const COLORS = {
+  car: 'var(--car)',
+  ambulance: 'var(--ambulance)',
+  truck: 'var(--truck)',
+  bus: 'var(--bus)',
+  motorcycle: 'var(--motorcycle)',
+};
+const ICONS = { car:'🚗', ambulance:'🚑', truck:'🚛', bus:'🚌', motorcycle:'🏍️' };
+
+let streamOk = false;
+let lastDetections = [];
+let totalEvents = 0;
+let maxCount = 1;
+let prevAmb = 0;
+
+// ── Clock ──────────────────────────────────────────────────────────────────
+function tick() {
+  const now = new Date();
+  document.getElementById('clock').textContent =
+    now.toTimeString().slice(0,8);
+  document.getElementById('tsInfo').textContent =
+    now.toTimeString().slice(0,8);
+}
+setInterval(tick, 1000); tick();
+
+// ── Stream load/error ──────────────────────────────────────────────────────
+function handleStreamLoad() {
+  if (!streamOk) {
+    streamOk = true;
+    document.getElementById('connectOverlay').style.display = 'none';
+  }
+}
+
+function handleStreamError() {
+  streamOk = false;
+  document.getElementById('connectOverlay').style.display = 'flex';
+  // Retry after 2s
+  setTimeout(() => {
+    const img = document.getElementById('streamImg');
+    img.src = '/stream?' + Date.now();
+  }, 2000);
+}
+
+// ── Status polling ─────────────────────────────────────────────────────────
+async function pollStatus() {
+  try {
+    const r = await fetch('/status');
+    if (!r.ok) return;
+    const d = await r.json();
+
+    // Status dot
+    const dot  = document.getElementById('statusDot');
+    const stxt = document.getElementById('statusText');
+    dot.className = 'status-dot ' + (d.stream_status || 'connecting');
+    const labels = { live:'EN VIVO', connecting:'CONECTANDO', error:'ERROR' };
+    stxt.textContent = labels[d.stream_status] || 'DESCONECTADO';
+
+    // Stats
+    document.getElementById('statTotal').textContent = d.total_detections ?? 0;
+    document.getElementById('statFps').textContent   = d.fps ?? 0;
+    document.getElementById('statAmb').textContent   = d.detection_count?.ambulance ?? 0;
+    document.getElementById('statUp').textContent    = d.uptime ?? 0;
+    document.getElementById('fpsFrames').textContent = d.frame_count ?? 0;
+    document.getElementById('modelLabel').textContent = d.model ?? '—';
+    document.getElementById('modelBadge').textContent = d.model ?? '—';
+    document.getElementById('frameInfo').textContent  = 'FRAME ' + (d.frame_count ?? '--');
+
+    // Vehicle bars
+    const cnts = d.detection_count || {};
+    const order = ['car','ambulance','bus','truck','motorcycle'];
+    maxCount = Math.max(1, ...order.map(k => cnts[k] || 0));
+
+    const setBar = (id, barId, key) => {
+      const v = cnts[key] || 0;
+      document.getElementById(id).textContent = v;
+      document.getElementById(barId).style.width = (v / maxCount * 100) + '%';
+    };
+    setBar('cntCar',  'barCar',   'car');
+    setBar('cntAmb',  'barAmb',   'ambulance');
+    setBar('cntBus',  'barBus',   'bus');
+    setBar('cntTruck','barTruck', 'truck');
+    setBar('cntMoto', 'barMoto',  'motorcycle');
+
+    // Ambulance alert flash
+    const newAmb = cnts.ambulance || 0;
+    if (newAmb > prevAmb) {
+      document.getElementById('videoPanel').classList.remove('alert-ambulance');
+      void document.getElementById('videoPanel').offsetWidth;
+      document.getElementById('videoPanel').classList.add('alert-ambulance');
+    }
+    prevAmb = newAmb;
+
+    // Event feed — add new detections
+    const dets = d.last_detections || [];
+    if (dets.length && JSON.stringify(dets) !== JSON.stringify(lastDetections)) {
+      lastDetections = dets;
+      addEvents(dets);
+    }
+
+  } catch(e) { /* silent */ }
+}
+
+function addEvents(dets) {
+  const feed = document.getElementById('eventFeed');
+
+  // Clear placeholder
+  const placeholder = feed.querySelector('[style*="ESPERANDO"]');
+  if (placeholder) placeholder.remove();
+
+  const now = new Date().toTimeString().slice(0,8);
+  dets.forEach(det => {
+    const item = document.createElement('div');
+    item.className = 'event-item';
+    const clr = COLORS[det.label] || 'var(--accent)';
+    item.style.setProperty('--clr', clr);
+    item.style.borderLeftColor = clr;
+    item.innerHTML = `
+      <span class="event-time">${now}</span>
+      <span class="event-label">${ICONS[det.label]||''} ${det.label}</span>
+      <span class="event-conf">${(det.conf*100).toFixed(0)}%</span>
+    `;
+    feed.insertBefore(item, feed.firstChild);
+    // Keep max 60 events
+    while (feed.children.length > 60) feed.removeChild(feed.lastChild);
+  });
+}
+
+// Poll every 1s
+setInterval(pollStatus, 1000);
+pollStatus();
+</script>
+</body>
+</html>
